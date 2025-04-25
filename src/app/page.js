@@ -16,5 +16,5 @@ const ResetPasswordFormWithSearchParams = () => {
   const searchParams = useSearchParams();
   const accessToken = searchParams.get("access_token");
 
-  return <ResetPasswordForm accesToken={accessToken} />;
+  return <ResetPasswordForm accessToken={accessToken} />;
 };

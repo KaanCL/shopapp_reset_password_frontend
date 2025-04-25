@@ -1,31 +1,22 @@
-import { useEffect, useState } from 'react';
-import { setSessionWithToken, updatePassword } from '../lib/auth'; 
+import { useState } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { getAccessTokenFromPKCE, updatePassword } from '@/lib/auth';
 
 const ResetPasswordForm = ({ accessToken }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
-
-  useEffect(() => {
-    const setupSession = async () => {
-      const { error } = await setSessionWithToken(accessToken);
-      if (error) {
-        setError("Token is invalid or expired.");
-      } else {
-        setSessionReady(true);
-      }
-    };
-    if (accessToken) {
-      setupSession();
-    }
-  }, [accessToken]);
+  const [success, setSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validatePassword = (password) => {
-    if (password.length === 0) return "Password cannot be empty";
-    if (password.length < 8) return "Password must be at least 8 characters long";
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+    if (password.length === 0) {
+      return "Password cannot be empty";
+    } else if (password.length < 8) {
+      return "Password must be at least 8 characters long";
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       return "Password must contain at least one uppercase letter, one lowercase letter, and one number";
     }
     return "";
@@ -33,70 +24,122 @@ const ResetPasswordForm = ({ accessToken }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const passwordError = validatePassword(newPassword);
-    if (passwordError) {
-      setError(passwordError);
-      return;
-    }
-
+    
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
 
-    setError('');
     setLoading(true);
-
-    const { error } = await updatePassword(newPassword);
-
-    if (error) {
-      setError("Something went wrong. Please try again.");
-      console.error(error);
-    } else {
-      alert("Password updated successfully!");
+    
+    try {
+        console.log(accessToken);
+      const data = await getAccessTokenFromPKCE(accessToken);
+      await updatePassword(newPassword);
+      setSuccess(true);
+      console.log('Password updated successfully');
+    } catch (error) {
+      console.error("Error updating password:", error);
+      setError("Something went wrong. Please try again. " + error.message);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  if (!sessionReady) {
-    return <p className="text-center mt-5">Preparing reset session...</p>;
+
+  const containerStyle = {
+    padding: '20px',
+  };
+
+  const titleStyle = {
+    fontFamily: 'var(--font-bebas-neue)',
+    textAlign: 'left',
+    marginTop: '30px',
+  };
+
+  const subtitleStyle = {
+    fontFamily: 'var(--font-poppins)',
+    textAlign: 'left',
+    marginBottom: '20px',
+  };
+
+  const errorStyle = {
+    color: 'red',
+  };
+
+  const buttonStyle = {
+    backgroundColor: '#F16023',
+    color: '#FFFFFF',
+    fontFamily: 'var(--font-poppins)',
+  };
+
+  if (success) {
+    return (
+      <div style={containerStyle}>
+        <h2 style={titleStyle}>Password Reset Successful!</h2>
+        <p style={subtitleStyle}>
+          Your password has been successfully updated. You can now login with your new password.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div className='container'>
-      <h2 className='mt-5'>Change Your Password</h2>
+    <div style={containerStyle}>
+      <h2 style={titleStyle}>Change Your Password</h2>
 
-      <form className='mt-4' onSubmit={handleSubmit}>
-        <div className='mb-3'>
-          <label htmlFor="newPassword" className="form-label">New Password</label>
-          <input
-            type="password"
-            className="form-control"
-            id="newPassword"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
+      <p style={subtitleStyle}>
+        To reset your password, please fill out the form below.
+      </p>
+
+      <form className="mt-4" onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <label htmlFor="newPassword" className="form-label" style={{ fontFamily: 'var(--font-poppins)' }}>New Password</label>
+          <div className="input-group">
+            <input
+              type={showNewPassword ? 'text' : 'password'}
+              className="form-control"
+              id="newPassword"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="input-group-text"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+            >
+              {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
         </div>
 
-        <div className='mb-3'>
-          <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-          <input
-            type="password"
-            className="form-control"
-            id="confirmPassword"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
+        <div className="mb-3">
+          <label htmlFor="confirmPassword" className="form-label" style={{ fontFamily: 'var(--font-poppins)' }}>Confirm Password</label>
+          <div className="input-group">
+            <input
+              type={showConfirmPassword ? 'text' : 'password'}
+              className="form-control"
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="input-group-text"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
         </div>
 
-        {error && <p className="text-danger">{error}</p>}
+        {error && <p style={errorStyle}>{error}</p>}
 
         <div className="d-flex justify-content-center">
-          <button 
-            type="submit" 
-            className="btn btn-primary"
+          <button
+            style={buttonStyle}
+            type="submit"
+            className="btn"
             disabled={loading}
           >
             {loading ? 'Loading...' : 'Submit'}
